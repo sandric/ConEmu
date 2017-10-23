@@ -87,7 +87,9 @@ public:
 	bool isScroll(RealBufferScroll aiScroll = rbs_Any);
 	bool isConsoleDataChanged();
 
-	void InitSBI(CONSOLE_SCREEN_BUFFER_INFO* ap_sbi, bool abCurBufHeight);
+	// Called during attach
+	void InitSBI(const CONSOLE_SCREEN_BUFFER_INFO& ap_sbi);
+
 	void InitMaxSize(const COORD& crMaxSize);
 	COORD GetMaxSize();
 
@@ -116,7 +118,7 @@ public:
 	bool isBuferModeChangeLocked();
 	bool BuferModeChangeLock();
 	void BuferModeChangeUnlock();
-	bool BufferHeightTurnedOn(CONSOLE_SCREEN_BUFFER_INFO* psbi);
+	bool BufferHeightTurnedOn(const CONSOLE_SCREEN_BUFFER_INFO& psbi);
 	void OnBufferHeight();
 
 	LRESULT DoScrollBuffer(int nDirection, short nTrackPos = -1, UINT nCount = 1, bool abOnlyVirtual = false);

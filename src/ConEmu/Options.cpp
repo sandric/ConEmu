@@ -426,7 +426,7 @@ void Settings::InitSettings()
 	//isSendAltEnter = isSendAltSpace = isSendAltF9 = false;
 	isSendAltTab = isSendAltEsc = isSendAltPrintScrn = isSendPrintScrn = isSendCtrlEsc = false;
 	isMonitorConsoleLang = 3; // bitmask. 1 - follow up console HKL (e.g. after XLat in Far Manager), 2 - use one HKL for all tabs
-	DefaultBufferHeight = 1000; AutoBufferHeight = true;
+	DefaultBufferHeight = LONGOUTPUTHEIGHT_MAX; AutoBufferHeight = true;
 	UseScrollLock = true;
 	isSaveCmdHistory = true;
 	ComSpec.AddConEmu2Path = CEAP_AddAll;

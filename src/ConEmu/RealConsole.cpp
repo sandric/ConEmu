@@ -1299,40 +1299,15 @@ bool CRealConsole::AttachConemuC(HWND ahConWnd, DWORD anConemuC_PID, const CESER
 
 	WARNING("TODO: Support horizontal scroll");
 
-	//2010-03-03 переделано для аттача через пайп
-	CONSOLE_SCREEN_BUFFER_INFO lsbi = rStartStop->sbi;
 	// Remove bRootIsCmdExe&isScroll() from expression. Use REAL scrolls from REAL console
-	bool bCurBufHeight = /*rStartStop->bRootIsCmdExe || mp_RBuf->isScroll() ||*/ mp_RBuf->BufferHeightTurnedOn(&lsbi);
-
-	// Смотрим реальный буфер - изменилось ли наличие прокрутки?
-	if (mp_RBuf->isScroll() != bCurBufHeight)
-	{
-		_ASSERTE(mp_RBuf->isBuferModeChangeLocked()==FALSE);
-		mp_RBuf->SetBufferHeightMode(bCurBufHeight, FALSE);
-	}
+	// BufferHeightTurnedOn and SetBufferHeightMode checks moved to InitSBI
+	// bool bCurBufHeight = /*rStartStop->bRootIsCmdExe || mp_RBuf->isScroll() ||*/ mp_RBuf->BufferHeightTurnedOn(lsbi);
 
 	RECT rcWnd = mp_ConEmu->GetGuiClientRect();
 	TODO("DoubleView: ?");
 	mp_ConEmu->AutoSizeFont(rcWnd, CER_MAINCLIENT);
-	RECT rcCon = mp_ConEmu->CalcRect(CER_CONSOLE_CUR, rcWnd, CER_MAINCLIENT, mp_VCon);
-	// Скорректировать sbi на новый, который БУДЕТ установлен после отработки сервером аттача
-	lsbi.dwSize.X = MakeShort(rcCon.right);
-	lsbi.srWindow.Left = 0; lsbi.srWindow.Right = MakeShort(rcCon.right-1);
 
-	if (bCurBufHeight)
-	{
-		// sbi.dwSize.Y не трогаем
-		lsbi.srWindow.Bottom = MakeShort(lsbi.srWindow.Top + rcCon.bottom - 1);
-	}
-	else
-	{
-		lsbi.dwSize.Y = MakeShort(rcCon.bottom);
-		lsbi.srWindow.Top = 0; lsbi.srWindow.Bottom = MakeShort(rcCon.bottom - 1);
-	}
-
-	mp_RBuf->InitSBI(&lsbi, bCurBufHeight);
-
-	_ASSERTE(isBufferHeight() == bCurBufHeight);
+	mp_RBuf->InitSBI(rStartStop->sbi);
 
 	//// Событие "изменения" консоли //2009-05-14 Теперь события обрабатываются в GUI, но прийти из консоли может изменение размера курсора
 	//swprintf_c(ms_ConEmuC_Pipe, CE_CURSORUPDATE, mn_MainSrv_PID);

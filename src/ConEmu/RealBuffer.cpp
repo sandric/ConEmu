@@ -1299,13 +1299,38 @@ bool CRealBuffer::isScroll(RealBufferScroll aiScroll /*= rbs_Any*/)
 	return con.bBufferHeight;
 }
 
-// Вызывается при аттаче (CRealConsole::AttachConemuC)
-void CRealBuffer::InitSBI(CONSOLE_SCREEN_BUFFER_INFO* ap_sbi, bool abCurBufHeight)
+// Called during attach (CRealConsole::AttachConemuC)
+void CRealBuffer::InitSBI(const CONSOLE_SCREEN_BUFFER_INFO& sbi)
 {
-	con.m_sbi = *ap_sbi;
+	bool bCurBufHeight = /*rStartStop->bRootIsCmdExe || mp_RBuf->isScroll() ||*/ mp_RBuf->BufferHeightTurnedOn(sbi);
+
+	RECT rcCon = mp_ConEmu->CalcRect(CER_CONSOLE_CUR, rcWnd, CER_MAINCLIENT, mp_VCon);
+	// Скорректировать sbi на новый, который БУДЕТ установлен после отработки сервером аттача
+	sbi.dwSize.X = MakeShort(rcCon.right);
+	sbi.srWindow.Left = 0; sbi.srWindow.Right = MakeShort(rcCon.right-1);
+
+	if (bCurBufHeight)
+	{
+		// Don't change sbi.dwSize.Y
+		sbi.srWindow.Bottom = MakeShort(sbi.srWindow.Top + rcCon.bottom - 1);
+	}
+	else
+	{
+		sbi.dwSize.Y = MakeShort(rcCon.bottom);
+		sbi.srWindow.Top = 0;
+		sbi.srWindow.Bottom = MakeShort(rcCon.bottom - 1);
+	}
+
+	con.m_sbi = sbi;
 
 	TODO("Horizontal scroll");
 	con.bBufferHeight = abCurBufHeight;
+
+	// Check real console scrollers - if they were changed
+	_ASSERTEX(!mb_BuferModeChangeLocked);
+	CheckBufferSize();
+
+	_ASSERTE(isBufferHeight() == bCurBufHeight);
 }
 
 void CRealBuffer::InitMaxSize(const COORD& crMaxSize)
@@ -2061,7 +2086,7 @@ bool CRealBuffer::CheckBufferSize()
 	//  //MOVEWINDOW(mp_RCon->hConWnd, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), 1);
 	//} else {
 	// BufferHeight может меняться и из плагина (например, DVDPanel), во время работы фара, или в других приложения (wmic)
-	BOOL lbTurnedOn = BufferHeightTurnedOn(&con.m_sbi);
+	BOOL lbTurnedOn = BufferHeightTurnedOn(con.m_sbi);
 
 	if (!lbTurnedOn && con.bBufferHeight)
 	{
@@ -2556,6 +2581,7 @@ void CRealBuffer::ApplyConsoleInfo(const CESERVER_REQ* pInfo, bool& bSetApplyFin
 
 			LONG nLastConsoleRow = mp_RCon->m_AppMap.IsValid() ? mp_RCon->m_AppMap.Ptr()->nLastConsoleRow : -1;
 			CONSOLE_SCREEN_BUFFER_INFO sbi = pInfo->ConState.sbi;
+			bool lbRealTurnedOn = BufferHeightTurnedOn(sbi);
 			con.srRealWindow = pInfo->ConState.srRealWindow;
 			if (nLastConsoleRow > 0)
 			{
@@ -2598,7 +2624,11 @@ void CRealBuffer::ApplyConsoleInfo(const CESERVER_REQ* pInfo, bool& bSetApplyFin
 				}
 
 				//if (con.bBufferHeight != (nNewHeight < con.m_sbi.dwSize.Y))
-				bool lbTurnedOn = BufferHeightTurnedOn(&con.m_sbi);
+				bool lbTurnedOn = BufferHeightTurnedOn(con.m_sbi);
+				// If we force dynamic height of the buffer
+				if (!lbTurnedOn && lbRealTurnedOn)
+				{
+				}
 				if (con.bBufferHeight != lbTurnedOn)
 					SetBufferHeightMode(lbTurnedOn);
 
@@ -2796,14 +2826,14 @@ void CRealBuffer::ApplyConsoleInfo(const CESERVER_REQ* pInfo, bool& bSetApplyFin
 
 // По переданному CONSOLE_SCREEN_BUFFER_INFO определяет, включена ли прокрутка
 // static
-bool CRealBuffer::BufferHeightTurnedOn(CONSOLE_SCREEN_BUFFER_INFO* psbi)
+bool CRealBuffer::BufferHeightTurnedOn(const CONSOLE_SCREEN_BUFFER_INFO& psbi)
 {
 	bool lbTurnedOn = false;
 	TODO("!!! Скорректировать");
 
-	if (psbi->dwSize.Y <= (psbi->srWindow.Bottom - psbi->srWindow.Top + 1))
+	if (psbi.dwSize.Y <= (psbi.srWindow.Bottom - psbi.srWindow.Top + 1))
 	{
-		_ASSERTE(psbi->dwSize.Y == (psbi->srWindow.Bottom - psbi->srWindow.Top + 1))
+		_ASSERTE(psbi.dwSize.Y == (psbi.srWindow.Bottom - psbi.srWindow.Top + 1))
 		// высота окна == высоте буфера,
 		lbTurnedOn = false;
 	}
@@ -2814,7 +2844,7 @@ bool CRealBuffer::BufferHeightTurnedOn(CONSOLE_SCREEN_BUFFER_INFO* psbi)
 		TODO("Тут нужно бы сравнивать не с TextHeight(), а с высотой буфера. Но она инициализируется пока только для режима с прокруткой.");
 		int nHeight = TextHeight();
 		// Высота буфера 'намного' больше высоты НАШЕГО окна
-		if (con.m_sbi.dwSize.Y > EvalBufferTurnOnSize(nHeight))
+		if (psbi.dwSize.Y > EvalBufferTurnOnSize(nHeight))
 			lbTurnedOn = true;
 	}
 	//else if (con.m_sbi.dwSize.Y < (con.m_sbi.srWindow.Bottom-con.m_sbi.srWindow.Top+10))
