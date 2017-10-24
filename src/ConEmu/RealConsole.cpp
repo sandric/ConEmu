@@ -4370,6 +4370,7 @@ void CRealConsole::ResetVarsOnStart()
 	mn_DeactivateTick = 0;
 	mb_WasVisibleOnce = mp_VCon->isVisible();
 	mb_NeedLoadRootProcessIcon = true;
+	ZeroStruct(m_ScrollStatus);
 
 	UpdateStartState(rss_StartupRequested);
 
@@ -11013,18 +11014,15 @@ void CRealConsole::UpdateScrollInfo()
 	UpdateCursorInfo();
 
 
-	WARNING("DoubleView: заменить static на member");
-	static SHORT nLastHeight = 0, nLastWndHeight = 0, nLastTop = 0;
+	if (m_ScrollStatus.nLastHeight == mp_ABuf->GetDynamicHeight()
+	        && m_ScrollStatus.nLastWndHeight == mp_ABuf->GetTextHeight()/*(con.m_sbi.srWindow.Bottom - con.m_sbi.srWindow.Top + 1)*/
+	        && m_ScrollStatus.nLastTop == mp_ABuf->GetBufferPosY()/*con.m_sbi.srWindow.Top*/)
+		return; // was not changed
 
-	if (nLastHeight == mp_ABuf->GetBufferHeight()/*con.m_sbi.dwSize.Y*/
-	        && nLastWndHeight == mp_ABuf->GetTextHeight()/*(con.m_sbi.srWindow.Bottom - con.m_sbi.srWindow.Top + 1)*/
-	        && nLastTop == mp_ABuf->GetBufferPosY()/*con.m_sbi.srWindow.Top*/)
-		return; // не менялось
-
-	nLastHeight = mp_ABuf->GetBufferHeight()/*con.m_sbi.dwSize.Y*/;
-	nLastWndHeight = mp_ABuf->GetTextHeight()/*(con.m_sbi.srWindow.Bottom - con.m_sbi.srWindow.Top + 1)*/;
-	nLastTop = mp_ABuf->GetBufferPosY()/*con.m_sbi.srWindow.Top*/;
-	mp_VCon->SetScroll(mp_ABuf->isScroll()/*con.bBufferHeight*/, nLastTop, nLastWndHeight, nLastHeight);
+	m_ScrollStatus.nLastHeight = mp_ABuf->GetDynamicHeight();
+	m_ScrollStatus.nLastWndHeight = mp_ABuf->GetTextHeight()/*(con.m_sbi.srWindow.Bottom - con.m_sbi.srWindow.Top + 1)*/;
+	m_ScrollStatus.nLastTop = mp_ABuf->GetBufferPosY()/*con.m_sbi.srWindow.Top*/;
+	mp_VCon->SetScroll(mp_ABuf->isScroll()/*con.bBufferHeight*/, m_ScrollStatus.nLastTop, m_ScrollStatus.nLastWndHeight, m_ScrollStatus.nLastHeight);
 }
 
 bool CRealConsole::_TabsInfo::RefreshFarPID(DWORD nNewPID)
